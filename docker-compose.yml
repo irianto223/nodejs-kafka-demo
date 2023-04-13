@@ -1,42 +1,53 @@
 version: '3.8'
 services:
 
-  zookeeper:
-    container_name: zookeeper
+  zookeeper-demo:
+    container_name: zookeeper-demo
     image: wurstmeister/zookeeper
     ports:
       - 2181:2181
+    networks:
+      - network-demo
 
-  kafka:
-    container_name: kafka
+  kafka-demo:
+    container_name: kafka-demo
     image: wurstmeister/kafka
     ports:
       - 9092:9092
     volumes:
-      - ./data/kafka:/var/run/docker.sock
+      - ./data/kafka-demo:/var/run/docker.sock
     environment:
-      - KAFKA_ADVERTISED_HOST_NAME=kafka
-      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_ADVERTISED_HOST_NAME=kafka-demo
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper-demo:2181
+      - KAFKA_CREATE_TOPICS=topic1:1:3
+    depends_on:
+      - zookeeper-demo
+    networks:
+      - network-demo
 
-  mongo:
-    container_name: mongo
+  mongo-demo:
+    container_name: mongo-demo
     image: mongo
     ports:
       - 27018:27017
     volumes:
-      - ./data/mongo:/data/db
+      - ./data/mongo-demo:/data/db
+    networks:
+      - network-demo
 
-  postgres:
-    container_name: postgres
+  postgres-demo:
+    container_name: postgres-demo
     image: postgres
     ports:
       - 5433:5432
     volumes:
-      - ./data/postgres:/var/lib/postgresql/data
+      - ./data/postgres-demo:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=postgres
+    networks:
+      - network-demo
 
   app1:
     container_name: app1
@@ -47,12 +58,14 @@ services:
       - ./app1:/app
     environment:
       - PORT=8080
-      - POSTGRES_URL=postgres://postgres:postgres@postgres:5433/postgres
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - POSTGRES_URL=postgres://postgres:postgres@postgres-demo:5432/postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka-demo:9092
       - KAFKA_TOPIC=topic1
     depends_on:
-      - postgres
-      - kafka
+      - postgres-demo
+      - kafka-demo
+    networks:
+      - network-demo
 
   app2:
     container_name: app2
@@ -63,9 +76,14 @@ services:
       - ./app2:/app
     environment:
       - PORT=8080
-      - MONGO_URL=mongodb://mongo:27018/app2
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - MONGO_URL=mongodb://mongo-demo:27017/app2
+      - KAFKA_BOOTSTRAP_SERVERS=kafka-demo:9092
       - KAFKA_TOPIC=topic1
     depends_on:
-      - mongo
-      - kafka
+      - mongo-demo
+      - kafka-demo
+    networks:
+      - network-demo
+
+networks:
+  network-demo:
